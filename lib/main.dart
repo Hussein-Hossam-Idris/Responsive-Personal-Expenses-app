@@ -52,7 +52,7 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final List<Transaction> _userTransactions = [];
 
   List<Transaction> get _recentTransactions {
@@ -90,14 +90,57 @@ class _MyHomePageState extends State<MyHomePage> {
         });
   }
 
+  List<Widget> _buildLandScapeContent(
+      Widget txListWIdget, PreferredSizeWidget appBar) {
+    return [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            "Show Chart",
+            style: Theme.of(context).textTheme.headline6,
+          ),
+          Switch.adaptive(
+            activeColor: Theme.of(context).accentColor,
+            value: _showChart,
+            onChanged: (value) {
+              setState(() {
+                _showChart = value;
+              });
+            },
+          )
+        ],
+      ),
+      _showChart
+          ? Container(
+              child: Chart(_recentTransactions),
+              height: (MediaQuery.of(context).size.height -
+                      appBar.preferredSize.height -
+                      MediaQuery.of(context).padding.top) *
+                  0.7,
+            )
+          : txListWIdget
+    ];
+  }
+
+  List<Widget> _buildPortriatContent(
+      PreferredSizeWidget appBar, Widget txListWIdget) {
+    return [
+      Container(
+        child: Chart(_recentTransactions),
+        height: (MediaQuery.of(context).size.height -
+                appBar.preferredSize.height -
+                MediaQuery.of(context).padding.top) *
+            0.3,
+      ),
+      txListWIdget,
+    ];
+  }
+
   bool _showChart = false;
 
-  @override
-  Widget build(BuildContext context) {
-    final isLandScape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-
-    final PreferredSizeWidget appBar = (Platform.isIOS
+  PreferredSizeWidget dynamicAppBar() {
+    return (Platform.isIOS
         ? CupertinoNavigationBar(
             middle: Text('Personal Expenses'),
             trailing: Row(
@@ -123,6 +166,31 @@ class _MyHomePageState extends State<MyHomePage> {
               )
             ],
           )) as PreferredSizeWidget;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance!.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    print(state);
+  }
+
+  @override
+  dispose() {
+    WidgetsBinding.instance!.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLandScape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    final PreferredSizeWidget appBar = dynamicAppBar();
 
     final txListWIdget = Container(
       child: TransactionList(_userTransactions, _deleteTransaction),
@@ -137,49 +205,12 @@ class _MyHomePageState extends State<MyHomePage> {
         child: SingleChildScrollView(
       child: Column(
         children: [
-          ///if we are in landscape mode we show the switch
-          if (isLandScape)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "Show Chart",
-                  style: Theme.of(context).textTheme.headline6,
-                ),
-                Switch(
-                  activeColor: Theme.of(context).accentColor,
-                  value: _showChart,
-                  onChanged: (value) {
-                    setState(() {
-                      _showChart = value;
-                    });
-                  },
-                )
-              ],
-            ),
-
           ///if we are not in lndscape mode we show both chart and list
-          if (!isLandScape)
-            Container(
-              child: Chart(_recentTransactions),
-              height: (MediaQuery.of(context).size.height -
-                      appBar.preferredSize.height -
-                      MediaQuery.of(context).padding.top) *
-                  0.3,
-            ),
-          if (!isLandScape) txListWIdget,
+          if (!isLandScape) ..._buildPortriatContent(appBar, txListWIdget),
 
+          ///if we are in landscape mode we show the switch
           /// if we are IN landscape mode we choose to show the chart or not
-          if (isLandScape)
-            _showChart
-                ? Container(
-                    child: Chart(_recentTransactions),
-                    height: (MediaQuery.of(context).size.height -
-                            appBar.preferredSize.height -
-                            MediaQuery.of(context).padding.top) *
-                        0.7,
-                  )
-                : txListWIdget
+          if (isLandScape) ..._buildLandScapeContent(txListWIdget, appBar),
         ],
       ),
     ));
