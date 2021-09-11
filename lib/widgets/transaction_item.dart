@@ -43,6 +43,7 @@ class _TransactionItemState extends State<TransactionItem> {
       child: ListTile(
         leading: Container(
           height: 40,
+          width: 60,
           decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
               shape: BoxShape.rectangle,
